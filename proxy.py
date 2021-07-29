@@ -10,126 +10,139 @@ JUPYTER_PROXY_IP_OR_NAME = 'localhost'
 JUPYTER_PROXY_PORT = 8000
 
 # REMOTE HOST OPTIONS
-JUPYTER_SERVER_IP_OR_NAME = '10.2.76.1'
+JUPYTER_SERVER_IP_OR_NAME = '1.2.3.4'
 JUPYTER_SERVER_PORT = 8000
 JUPYTER_SERVER_NAME = 'jupyterhub'  # name used to verify connection via SSL
 # ref: cmsh -c "configurationoverlay; use jupyterhub; roles; use jupyterhub; show" | grep domains
-JUPYTER_USERNAME = 'gianvito'
+JUPYTER_USERNAME = 'myusername'
 JUPYTER_CLUSTER_CA_CERT = "my_sslca.cert"
 # ref: /cm/local/apps/jupyter/current/conf/certs/
 
 # CONNECTION OPTIONS
-BUFFER_SIZE = 4096  # increase this value with caution
+BUFFER_SIZE = 16384  # increase this value with caution
 SLEEP_DELAY = 0.0001  # decrease this value with caution
-
-# context = ssl.create_default_context()
-context = ssl.create_default_context(cafile=JUPYTER_CLUSTER_CA_CERT)
-# context.load_cert_chain("my_ssl.cert", "my_ssl.key")
+SERVER_SOCKET_BACKLOG = 200
+# ref: https://docs.python.org/3/library/socket.html#socket.socket.listen
 
 
-class Forward:
+class PyCharmJupyterDevServer:
+
     def __init__(self):
-        self.forward = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.forward = context.wrap_socket(
-            self.forward,
-            server_hostname=JUPYTER_SERVER_NAME,
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(
+            socket.SOL_SOCKET,
+            socket.SO_REUSEADDR,
+            1,
         )
+        self.open_sockets = []
+        self.channel = {}
+        self.ssl_context = None
 
-    def start(self, host, port):
-        try:
-            self.forward.connect((host, port))
-            return self.forward
-        except Exception as e:
-            print(e)
-            return False
+    def __enter__(self):
+        self.server_socket.bind((JUPYTER_PROXY_IP_OR_NAME, JUPYTER_PROXY_PORT))
+        self.server_socket.listen(SERVER_SOCKET_BACKLOG)
+        self.open_sockets.append(self.server_socket)
+        self.ssl_context = ssl.create_default_context(
+            cafile=JUPYTER_CLUSTER_CA_CERT,
+        )
+        return self
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.server_socket.close()
 
-class TheServer:
-    input_list = []
-    channel = {}
-
-    def __init__(self, host, port):
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server.bind((host, port))
-        self.server.listen(200)
-
-    def main_loop(self):
-        self.input_list.append(self.server)
+    def forward_requests(self):
         while True:
-            time.sleep(SLEEP_DELAY)
-            inputready, outputready, exceptready = select.select(self.input_list, [], [])
-            for self.s in inputready:
-                if self.s == self.server:
+            read_ready_sockets, _, _ = select.select(self.open_sockets, [], [])
+            for ready_socket in read_ready_sockets:
+                if ready_socket == self.server_socket:
                     self.on_accept()
                     break
                 try:
-                    self.data = self.s.recv(BUFFER_SIZE)
-                    if len(self.data) == 0:
-                        self.on_close()
+                    data = ready_socket.recv(BUFFER_SIZE)
+                    if len(data) == 0:
+                        self.on_close(ready_socket)
                         break
-                    else:
-                        self.on_recv()
-                except ConnectionResetError:
-                    pass
+                    self.on_receive(ready_socket, data)
+                except ConnectionError as exc:
+                    print(exc)
+                    print("Can't establish connection with remote server.")
+            time.sleep(SLEEP_DELAY)
 
     def on_accept(self):
-        forward = Forward().start(JUPYTER_SERVER_IP_OR_NAME, JUPYTER_SERVER_PORT)
-        clientsock, clientaddr = self.server.accept()
-        if forward:
-            print(clientaddr, "has connected")
-            self.input_list.append(clientsock)
-            self.input_list.append(forward)
-            self.channel[clientsock] = forward
-            self.channel[forward] = clientsock
-        else:
-            print("Can't establish connection with remote server.",)
-            print("Closing connection with client side", clientaddr)
-            clientsock.close()
-
-    def on_close(self):
+        # try to establish connection with remote Jupyter server
+        forward_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        forward_socket = self.ssl_context.wrap_socket(
+            forward_socket,
+            server_hostname=JUPYTER_SERVER_NAME,
+        )
+        client_socket, client_address = None, None
         try:
-            print(self.s.getpeername(), "has disconnected")
+            forward_socket.connect(
+                (JUPYTER_SERVER_IP_OR_NAME, JUPYTER_SERVER_PORT),
+            )
+            client_socket, client_address = self.server_socket.accept()
+            print(client_address, "has connected")
+            self.open_sockets.append(client_socket)
+            self.open_sockets.append(forward_socket)
+            self.channel[client_socket] = forward_socket
+            self.channel[forward_socket] = client_socket
+        except ssl.CertificateError:
+            print(
+                "Can't establish connection with remote server. "
+                "Incorrect CA certificates."
+            )
+            raise
+        except ConnectionError as exc:
+            print(exc)
+            print("Can't establish connection with remote server.")
+            if client_socket and client_address:
+                print("Closing connection with client side", client_address)
+                client_socket.close()
+
+    def on_close(self, client_socket):
+        try:
+            print(client_socket.getpeername(), "has disconnected")
+            # close sockets and cleanup channel dict
+            self.open_sockets.remove(client_socket)
+            self.open_sockets.remove(self.channel[client_socket])
+            forward_socket = self.channel[client_socket]
+            self.channel[forward_socket].close()
+            self.channel[client_socket].close()
+            del self.channel[forward_socket]
+            del self.channel[client_socket]
         except OSError as exc:
             print(exc)
-        # remove objects from input_list
-        self.input_list.remove(self.s)
-        self.input_list.remove(self.channel[self.s])
-        out = self.channel[self.s]
-        # close the connection with client
-        self.channel[out].close()  # equivalent to do self.s.close()
-        # close the connection with remote server
-        self.channel[self.s].close()
-        # delete both objects from channel dict
-        del self.channel[out]
-        del self.channel[self.s]
+            print("Can't close connection with client.")
 
-    def on_recv(self):
-        data = self.data
-        # here we can parse and/or modify the data before send forward
-        # print(data)
-        data = rewrite(data)
-        self.channel[self.s].send(data)
+    def on_receive(self, client_socket, data):
+        data = rewrite_requests_from_hub_to_lab(data)
+        self.channel[client_socket].send(data)
 
 
-def rewrite(data):
+def rewrite_requests_from_hub_to_lab(data):
+    encoding = 'utf-8'
+    hub_api_endpoint = ' /api/'
+    lab_api_endpoint = f" /user/{JUPYTER_USERNAME}/api/"
     try:
-        data = data.decode('utf-8')
+        data = data.decode(encoding)
         lines = data.split('\n')
-        if ' /api/' in lines[0]:
-            print('Rewriting /api/ request')
-            lines[0] = lines[0].replace(' /api/', f" /user/{JUPYTER_USERNAME}/api/")
-        return '\n'.join(lines).encode('utf-8')
-    except UnicodeDecodeError:
+        if hub_api_endpoint in lines[0]:
+            print(
+                f"Rewriting '{hub_api_endpoint}' request to "
+                f"'{lab_api_endpoint}'"
+            )
+            lines[0] = lines[0].replace(hub_api_endpoint, lab_api_endpoint)
+        return '\n'.join(lines).encode(encoding)
+    except UnicodeDecodeError:  # ignore non-plain text packets
         return data
 
 
 def main():
-    server = TheServer(JUPYTER_PROXY_IP_OR_NAME, JUPYTER_PROXY_PORT)
     try:
-        server.main_loop()
+        with PyCharmJupyterDevServer() as dev_server:
+            dev_server.forward_requests()
     except KeyboardInterrupt:
-        print("Ctrl C - Stopping server")
+        print("Ctrl C - Stopping PyCharmJupyterDevServer")
         sys.exit(1)
 
 
