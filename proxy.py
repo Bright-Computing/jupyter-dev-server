@@ -1,23 +1,29 @@
-#!/usr/bin/python
-# This is a simple port-forward / proxy, written using only the default python
-# library. If you want to make a suggestion or fix something you can contact-me
-# at voorloop_at_gmail.com
-# Distributed over IDC(I Don't Care) license
-import socket
+#!/usr/bin/env python3
 import select
-import time
+import socket
 import ssl
 import sys
+import time
 
-# Changing the buffer_size and delay, you can improve the speed and bandwidth.
-# But when buffer get to high or delay go too down, you can broke things
-buffer_size = 4096
-delay = 0.0001
-forward_to = ('10.2.76.1', 8000)
-username = 'gianvito'
+# LOCAL HOST OPTIONS
+JUPYTER_PROXY_IP_OR_NAME = 'localhost'
+JUPYTER_PROXY_PORT = 8000
+
+# REMOTE HOST OPTIONS
+JUPYTER_SERVER_IP_OR_NAME = '10.2.76.1'
+JUPYTER_SERVER_PORT = 8000
+JUPYTER_SERVER_NAME = 'jupyterhub'  # name used to verify connection via SSL
+# ref: cmsh -c "configurationoverlay; use jupyterhub; roles; use jupyterhub; show" | grep domains
+JUPYTER_USERNAME = 'gianvito'
+JUPYTER_CLUSTER_CA_CERT = "my_sslca.cert"
+# ref: /cm/local/apps/jupyter/current/conf/certs/
+
+# CONNECTION OPTIONS
+BUFFER_SIZE = 4096  # increase this value with caution
+SLEEP_DELAY = 0.0001  # decrease this value with caution
 
 # context = ssl.create_default_context()
-context = ssl.create_default_context(cafile="my_sslca.cert")
+context = ssl.create_default_context(cafile=JUPYTER_CLUSTER_CA_CERT)
 # context.load_cert_chain("my_ssl.cert", "my_ssl.key")
 
 
@@ -26,7 +32,7 @@ class Forward:
         self.forward = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.forward = context.wrap_socket(
             self.forward,
-            server_hostname="gt-pycharm",
+            server_hostname=JUPYTER_SERVER_NAME,
         )
 
     def start(self, host, port):
@@ -43,26 +49,22 @@ class TheServer:
     channel = {}
 
     def __init__(self, host, port):
-        # self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server = sock
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind((host, port))
         self.server.listen(200)
 
     def main_loop(self):
         self.input_list.append(self.server)
-        while 1:
-            time.sleep(delay)
-            ss = select.select
-            inputready, outputready, exceptready = ss(self.input_list, [], [])
+        while True:
+            time.sleep(SLEEP_DELAY)
+            inputready, outputready, exceptready = select.select(self.input_list, [], [])
             for self.s in inputready:
                 if self.s == self.server:
                     self.on_accept()
                     break
-
                 try:
-                    self.data = self.s.recv(buffer_size)
+                    self.data = self.s.recv(BUFFER_SIZE)
                     if len(self.data) == 0:
                         self.on_close()
                         break
@@ -72,7 +74,7 @@ class TheServer:
                     pass
 
     def on_accept(self):
-        forward = Forward().start(forward_to[0], forward_to[1])
+        forward = Forward().start(JUPYTER_SERVER_IP_OR_NAME, JUPYTER_SERVER_PORT)
         clientsock, clientaddr = self.server.accept()
         if forward:
             print(clientaddr, "has connected")
@@ -116,14 +118,14 @@ def rewrite(data):
         lines = data.split('\n')
         if ' /api/' in lines[0]:
             print('Rewriting /api/ request')
-            lines[0] = lines[0].replace(' /api/', f" /user/{username}/api/")
+            lines[0] = lines[0].replace(' /api/', f" /user/{JUPYTER_USERNAME}/api/")
         return '\n'.join(lines).encode('utf-8')
     except UnicodeDecodeError:
         return data
 
 
 def main():
-    server = TheServer('localhost', 8000)
+    server = TheServer(JUPYTER_PROXY_IP_OR_NAME, JUPYTER_PROXY_PORT)
     try:
         server.main_loop()
     except KeyboardInterrupt:
