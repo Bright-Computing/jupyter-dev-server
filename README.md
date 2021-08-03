@@ -29,7 +29,7 @@ For security reason, the traffic between the proxy and the remote Jupyter server
 On your local machine, where PyCharm Professional and Python 3 are installed, run:
 
 ```
-$ PYCHARM_JUPYTER_DEV_SERVER_DIR="~/bin"  # set your favorite directory
+$ export PYCHARM_JUPYTER_DEV_SERVER_DIR="~/bin"  # set your favorite directory
 $ mkdir -p ${PYCHARM_JUPYTER_DEV_SERVER_DIR}
 $ pushd ${PYCHARM_JUPYTER_DEV_SERVER_DIR}
 $ git clone https://github.com/Bright-Computing/pycharm-jupyter-dev-server.git
@@ -40,14 +40,14 @@ $ popd
 This step assumes:
 * Jupyter is accessible at some IP or name (e.g. `1.2.3.4`); 
 * a Jupyter user has been already created for you on the cluster (e.g. with username `myname`);
-* you stored the **public key** of [the CA certificate](https://en.wikipedia.org/wiki/Certificate_authority) that was used to securely sign the Jupyter certificates on the cluster (e.g. on the file `~/my_sslca.cert`)
+* you stored the **public key** of [the CA certificate](https://en.wikipedia.org/wiki/Certificate_authority) that was used to securely sign the Jupyter certificates on the cluster (e.g. on the file `/path/to/my_sslca.cert`)
 
 On your local machine, where the proxy has been installed in `${PYCHARM_JUPYTER_DEV_SERVER_DIR}`, you can run: 
 
 ```
 $ JUPYTER_SERVER_IP_OR_NAME="1.2.3.4" \
  JUPYTER_USERNAME="myname" \
- JUPYTER_CLUSTER_CA_CERT="~/my_sslca.cert" \
+ JUPYTER_CLUSTER_CA_CERT="/path/to/my_sslca.cert" \
  python3 ${PYCHARM_JUPYTER_DEV_SERVER_DIR}/proxy.py
 ```
 
@@ -61,7 +61,17 @@ You can (and should) customize the behaviour of the proxy by configuring the fol
 * `JUPYTER_USERNAME` (`myusername`);
 * `JUPYTER_CLUSTER_CA_CERT` (`./my_sslca.cert`).
 
-For convenience, you can permanently export them in your shell configuration file.
+For convenience, you can permanently export them in your shell configuration file:
+```
+export JUPYTER_SERVER_IP_OR_NAME="1.2.3.4"
+export JUPYTER_USERNAME="myname"
+export JUPYTER_CLUSTER_CA_CERT="/path/to/my_sslca.cert"
+export PYCHARM_JUPYTER_DEV_SERVER_DIR="~/bin"
+```
+and run the server as:
+```
+$ python3 ${PYCHARM_JUPYTER_DEV_SERVER_DIR}/proxy.py
+```
 
 ## Notes
 

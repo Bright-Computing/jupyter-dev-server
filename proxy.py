@@ -46,6 +46,12 @@ class PyCharmJupyterDevServer:
         self.ssl_context = ssl.create_default_context(
             cafile=JUPYTER_CLUSTER_CA_CERT,
         )
+        print(f"Server running at: http://{JUPYTER_PROXY_IP_OR_NAME}:{JUPYTER_PROXY_PORT}")
+        print(f"Forwarding requests to: http://{JUPYTER_SERVER_IP_OR_NAME}:{JUPYTER_SERVER_PORT}\n")
+        print(f"Jupyter username: {JUPYTER_USERNAME}")
+        print(f"CA certificate file: {JUPYTER_CLUSTER_CA_CERT}")
+        print(f"Jupyter authorized server name: {JUPYTER_SERVER_NAME}\n")
+        print(f"Authorization URL with token for PyCharm Professional: http://{JUPYTER_PROXY_IP_OR_NAME}:{JUPYTER_PROXY_PORT}/?token=<YOUR_API_TOKEN>\n")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
