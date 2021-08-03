@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import select
 import socket
 import ssl
@@ -6,20 +7,20 @@ import sys
 import time
 
 # LOCAL HOST OPTIONS
-JUPYTER_PROXY_IP_OR_NAME = 'localhost'
-JUPYTER_PROXY_PORT = 8000
+JUPYTER_PROXY_IP_OR_NAME = os.getenv('JUPYTER_PROXY_IP_OR_NAME', 'localhost')
+JUPYTER_PROXY_PORT = int(os.getenv('JUPYTER_PROXY_PORT', 8000))
 
 # REMOTE HOST OPTIONS
-JUPYTER_SERVER_IP_OR_NAME = '1.2.3.4'
-JUPYTER_SERVER_PORT = 8000
-JUPYTER_SERVER_NAME = 'jupyterhub'  # name used to verify connection via SSL
+JUPYTER_SERVER_IP_OR_NAME = os.getenv('JUPYTER_SERVER_IP_OR_NAME', '1.2.3.4')
+JUPYTER_SERVER_PORT = int(os.getenv('JUPYTER_SERVER_PORT', 8000))
+JUPYTER_SERVER_NAME = os.getenv('JUPYTER_SERVER_NAME', 'jupyterhub')  # name used to verify connection via SSL
 # ref: cmsh -c "configurationoverlay; use jupyterhub; roles; use jupyterhub; show" | grep domains
-JUPYTER_USERNAME = 'myusername'
-JUPYTER_CLUSTER_CA_CERT = "my_sslca.cert"
+JUPYTER_USERNAME = os.getenv('JUPYTER_USERNAME', 'myusername')
+JUPYTER_CLUSTER_CA_CERT = os.getenv('JUPYTER_CLUSTER_CA_CERT', "my_sslca.cert")
 # ref: /cm/local/apps/jupyter/current/conf/certs/
 
 # CONNECTION OPTIONS
-BUFFER_SIZE = 16384  # increase this value with caution
+BUFFER_SIZE = 2 ** 14  # increase this value with caution
 SLEEP_DELAY = 0.0001  # decrease this value with caution
 SERVER_SOCKET_BACKLOG = 200
 # ref: https://docs.python.org/3/library/socket.html#socket.socket.listen
