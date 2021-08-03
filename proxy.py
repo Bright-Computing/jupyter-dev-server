@@ -16,7 +16,7 @@ JUPYTER_SERVER_PORT = int(os.getenv('JUPYTER_SERVER_PORT', 8000))
 JUPYTER_SERVER_NAME = os.getenv('JUPYTER_SERVER_NAME', 'jupyterhub')  # name used to verify connection via SSL
 # ref: cmsh -c "configurationoverlay; use jupyterhub; roles; use jupyterhub; show" | grep domains
 JUPYTER_USERNAME = os.getenv('JUPYTER_USERNAME', 'myusername')
-JUPYTER_CLUSTER_CA_CERT = os.getenv('JUPYTER_CLUSTER_CA_CERT', "my_sslca.cert")
+JUPYTER_CLUSTER_CA_CERT = os.getenv('JUPYTER_CLUSTER_CA_CERT', "./my_sslca.cert")
 # ref: /cm/local/apps/jupyter/current/conf/certs/
 
 # CONNECTION OPTIONS
@@ -116,23 +116,23 @@ class PyCharmJupyterDevServer:
             print("Can't close connection with client.")
 
     def on_receive(self, client_socket, data):
-        data = rewrite_requests_from_hub_to_lab(data)
+        data = redirect_requests_to_hub(data)
         self.channel[client_socket].send(data)
 
 
-def rewrite_requests_from_hub_to_lab(data):
+def redirect_requests_to_hub(data):
     encoding = 'utf-8'
-    hub_api_endpoint = ' /api/'
-    lab_api_endpoint = f" /user/{JUPYTER_USERNAME}/api/"
+    jupyter_api_endpoint = ' /api/'
+    hub_api_endpoint = f" /user/{JUPYTER_USERNAME}/api/"
     try:
         data = data.decode(encoding)
         lines = data.split('\n')
-        if hub_api_endpoint in lines[0]:
+        if jupyter_api_endpoint in lines[0]:
             print(
-                f"Rewriting '{hub_api_endpoint}' request to "
-                f"'{lab_api_endpoint}'"
+                f"Rewriting '{jupyter_api_endpoint}' request to "
+                f"'{hub_api_endpoint}'"
             )
-            lines[0] = lines[0].replace(hub_api_endpoint, lab_api_endpoint)
+            lines[0] = lines[0].replace(jupyter_api_endpoint, hub_api_endpoint)
         return '\n'.join(lines).encode(encoding)
     except UnicodeDecodeError:  # ignore non-plain text packets
         return data
