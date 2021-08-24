@@ -40,7 +40,7 @@ $ popd
 This step assumes:
 * Jupyter is accessible at some IP or name (e.g. `1.2.3.4`); 
 * a Jupyter user has been already created for you on the cluster (e.g. with username `myname`);
-* you stored the **public key** of [the CA certificate](https://en.wikipedia.org/wiki/Certificate_authority) that was used to securely sign the Jupyter certificates on the cluster (e.g. on the file `/path/to/my_sslca.cert`)
+* you stored the **public key** of [the CA certificate](https://en.wikipedia.org/wiki/Certificate_authority) that was used to securely sign the Jupyter certificates on the cluster (e.g. on the file `/path/to/my_sslca.cert`). By default, it can be found under `/cm/local/apps/jupyter/current/conf/certs/` in the Jupyter login node and can be shared by cluster administrators.
 
 On your local machine, where the proxy has been installed in `${PYCHARM_JUPYTER_DEV_SERVER_DIR}`, you can run: 
 
