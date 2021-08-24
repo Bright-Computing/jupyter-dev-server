@@ -7,6 +7,8 @@ While the proxy is running, developers can [configure an external Jupyter server
 Once done, they will be able to execute notebook cells in PyCharm Professional as they would do in the traditional JupyterLab web interface.
 Code will be run via Jupyter kernels that are available for the users in the cluster (e.g. with local workload managers or Kubernetes).
 
+![pycharm with jupyter kernels](doc/jupyter-dev-server-cropped.gif)
+
 A demo of this tool can be watched on this [YouTube video](https://www.youtube.com/watch?v=fqOSfwtR1yI).
 
 This repository is used as a reference for this [Knowledge Base article](https://kb.brightcomputing.com/knowledge-base/running-jupyter-kernels-with-pycharm/).
