@@ -26,7 +26,7 @@ SERVER_SOCKET_BACKLOG = 200
 # ref: https://docs.python.org/3/library/socket.html#socket.socket.listen
 
 
-class PyCharmJupyterDevServer:
+class JupyterDevServer:
 
     def __init__(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -51,7 +51,7 @@ class PyCharmJupyterDevServer:
         print(f"Jupyter username: {JUPYTER_USERNAME}")
         print(f"CA certificate file: {JUPYTER_CLUSTER_CA_CERT}")
         print(f"Jupyter authorized server name: {JUPYTER_SERVER_NAME}\n")
-        print(f"Authorization URL with token for PyCharm Professional: http://{JUPYTER_PROXY_IP_OR_NAME}:{JUPYTER_PROXY_PORT}/?token=<YOUR_API_TOKEN>\n")
+        print(f"Authorization URL with token for IDE: http://{JUPYTER_PROXY_IP_OR_NAME}:{JUPYTER_PROXY_PORT}/?token=<YOUR_API_TOKEN>\n")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -146,10 +146,10 @@ def redirect_requests_to_hub(data):
 
 def main():
     try:
-        with PyCharmJupyterDevServer() as dev_server:
+        with JupyterDevServer() as dev_server:
             dev_server.forward_requests()
     except KeyboardInterrupt:
-        print("Ctrl C - Stopping PyCharmJupyterDevServer")
+        print("Ctrl C - Stopping JupyterDevServer")
         sys.exit(1)
 
 
