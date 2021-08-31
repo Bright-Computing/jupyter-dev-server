@@ -27,7 +27,7 @@ By doing so, connecting to http://localhost:8000 will be equivalent to connectin
 The reason why it is not usually possible for developers to set up a Jupyter server directly pointing to the Jupyter cluster without Bright's proxy is simple: IDEs **do not support [JupyterHub](https://jupyter.org/hub)** out of the box, a fundamental component of Bright's Jupyter integration.
 Due to this limitation, the IDE issues requests to the `/api/` endpoint rather than to `/user/<your_username>/api/` and fails.
 
-The [proxy](proxy.py) will bypass this limitation by transparently redirecting requests to allow proper connection.
+The [proxy](proxy.py) will bypass this limitation by transparently redirecting requests, thus allowing proper connection.
 
 For security reason, the traffic between the proxy and the remote Jupyter server deployed on the cluster is encrypted via SSL.
 The traffic between the IDE and the proxy running locally does not need to be encrypted.
