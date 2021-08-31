@@ -15,7 +15,7 @@ Code will be run via Jupyter kernels that are available for the users in the clu
 
 A demo of this tool for [PyCharm Professional](https://www.jetbrains.com/pycharm/) can be watched on this [YouTube video](https://www.youtube.com/watch?v=fqOSfwtR1yI).
 
-This repository is used as a reference for this [Knowledge Base article](https://kb.brightcomputing.com/knowledge-base/running-jupyter-kernels-with-pycharm/).
+This repository is used as a reference for this [Knowledge Base article](https://kb.brightcomputing.com/knowledge-base/running-jupyter-kernels-with-an-ide/).
 
 
 ## Overview
